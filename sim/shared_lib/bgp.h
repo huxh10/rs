@@ -1,0 +1,89 @@
+#ifndef _BGP_H_
+#define _BGP_H_
+
+#define ROUTE_FIELD             8
+#define ROUTE_DELIMITER_CHAR    ','
+#define ROUTE_DELIMITER_STR     ","
+#define AS_PATH_DELIMITER_CHAR  ' '
+#define AS_PATH_DELIMITER_STR   " "
+
+// oprt_type
+#define ANNOUNCE                1
+#define WITHDRAW                2
+
+// export_policy_class
+#define CUSTOMER                0
+#define PEER                    1
+#define PROVIDER                2
+#define POLICY_CLASS_NUM        3
+
+#define TO_BE_DEL               -1
+
+#include <stdint.h>
+#include "uthash.h"
+
+typedef struct {
+    int length;
+    int *asns;
+} as_path_t;
+
+typedef struct {
+    char *prefix;
+    char *neighbor;
+    char *next_hop;
+    char *origin;
+    as_path_t as_path;
+    char *communities;
+    int med;
+    int atomic_aggregate;
+} route_t;
+
+typedef struct _route_node route_node_t;
+
+struct _route_node {
+    uint8_t is_selected;
+    uint32_t next_hop;      // asn
+    route_t *route;
+    route_node_t *prev;
+    route_node_t *next;
+};
+
+typedef struct _rib_map rib_map_t;
+
+struct _rib_map {
+    route_node_t *routes;   // route list
+    UT_hash_handle hh;
+};
+
+typedef struct _rs_inner_msg rs_inner_msg_t;
+
+struct _rs_inner_msg {
+    uint8_t oprt_type;
+    uint32_t src_asn;
+    route_t *src_route;
+    rs_inner_msg_t *prev;
+    rs_inner_msg_t *next;
+};
+
+typedef struct {
+    uint32_t msg_size;
+    uint32_t asn;
+    uint8_t oprt_type;
+    uint8_t route[];
+} bgp_msg_t;
+
+char *my_strdup(const char *s);
+void free_route(route_t **pp_route);
+void print_route(route_t *p_route);
+void parse_route_from_file(route_t **pp_route, char *p_s_route);
+int parse_route_from_channel(route_t **pp_route, uint8_t *p_s_route);
+void route_cpy(route_t **dst_route, uint32_t *src_asn, route_t *src_route);
+int get_route_size(route_t *r);
+int write_route_msg(uint8_t *route, route_t *input);
+void generate_bgp_msg(bgp_msg_t **pp_bgp_msg, route_t *input, uint32_t asn, uint8_t oprt_type);
+route_node_t* get_selected_route_node(rib_map_t *p_rib_entry);
+void add_route(rib_map_t **pp_rib_entry, uint32_t src_asn, route_t *src_route, uint32_t *import_policy);
+void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uint32_t *import_policy, route_node_t *p_old_best_rn);
+void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_t src_next_hop, rs_inner_msg_t *tmp_p_inner_msg, uint32_t *export_policy);
+
+#endif

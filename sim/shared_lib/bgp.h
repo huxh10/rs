@@ -84,6 +84,6 @@ void generate_bgp_msg(bgp_msg_t **pp_bgp_msg, route_t *input, uint32_t asn, uint
 route_node_t* get_selected_route_node(rib_map_t *p_rib_entry);
 void add_route(rib_map_t **pp_rib_entry, uint32_t src_asn, route_t *src_route, uint32_t *import_policy);
 void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uint32_t *import_policy, route_node_t *p_old_best_rn);
-void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_t src_next_hop, rs_inner_msg_t *tmp_p_inner_msg, uint32_t *export_policy);
+void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_t *export_policy, uint32_t src_asn, uint32_t src_next_hop, uint8_t oprt_type, route_t *src_route);
 
 #endif

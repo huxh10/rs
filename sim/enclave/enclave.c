@@ -106,15 +106,14 @@ uint32_t compute_route(void *msg, size_t msg_size)
             p_old_best_rn[i] = get_selected_route_node(p_rib_entry);
             while (pp_inner_msgs[i]) {
                 // FIFO process
-                printf("iteration:%d, asn:%u\n", iteration, i);
                 tmp_p_inner_msg = pp_inner_msgs[i]->prev;
 
                 // update rib
                 if (tmp_p_inner_msg->oprt_type == ANNOUNCE) {
-                    printf("ANNOUNCE\n");
+                    printf("iteration:%d, asn:%u, receive ANNOUNCE msg from:%d\n", iteration, i, tmp_p_inner_msg->src_asn);
                     add_route(&p_rib_entry, tmp_p_inner_msg->src_asn, tmp_p_inner_msg->src_route, g_p_policies[i].import_policy);
                 } else if (tmp_p_inner_msg->oprt_type == WITHDRAW) {
-                    printf("WITHDRAW\n");
+                    printf("iteration:%d, asn:%u, receive WITHDRAW msg from:%d\n", iteration, i, tmp_p_inner_msg->src_asn);
                     del_route(p_rib_entry, tmp_p_inner_msg->src_asn, tmp_p_inner_msg->src_route, g_p_policies[i].import_policy, p_old_best_rn[i]);
                 }
 
@@ -130,11 +129,10 @@ uint32_t compute_route(void *msg, size_t msg_size)
                 }
             }
             p_new_best_rn[i] = get_selected_route_node(p_rib_entry);
-            if (p_new_best_rn[i]) print_route(p_new_best_rn[i]->route);
-            printf("p_new_best_rn[i] addr:%lu\n", (uint64_t) p_new_best_rn[i]);
-            printf("p_rib_entry addr:%lu\n", (uint64_t) p_rib_entry);
-            printf("p_rib_entry->routes addr:%lu\n", (uint64_t) p_rib_entry->routes);
-            printf("is_selected:%d, next_hop:%d, ptr route:%lu\n", p_rib_entry->routes->is_selected, p_rib_entry->routes->next_hop, (uint64_t) p_rib_entry->routes->route);
+            if (p_new_best_rn[i]) {
+                printf("new best after this iteration: ");
+                print_route(p_new_best_rn[i]->route);
+            }
 
             HASH_FIND_STR(g_pp_ribs[i], key, tmp_p_rib_entry);
             if (tmp_p_rib_entry) {
@@ -142,47 +140,27 @@ uint32_t compute_route(void *msg, size_t msg_size)
             } else if (p_rib_entry) {
                 HASH_ADD_KEYPTR(hh, g_pp_ribs[i], key, strlen(key), p_rib_entry);
             }
-            printf("ptr addr:%lu\n", (uint64_t) p_rib_entry);
-            printf("ptr addr:%lu\n", (uint64_t) p_rib_entry->routes);
-            printf("is_selected:%d, next_hop:%d, ptr route:%lu\n", p_rib_entry->routes->is_selected, p_rib_entry->routes->next_hop, (uint64_t) p_rib_entry->routes->route);
 
-            tmp_p_rib_entry = NULL;
-            HASH_FIND_STR(g_pp_ribs[i], key, tmp_p_rib_entry);
-            printf("ptr addr:%lu\n", (uint64_t) tmp_p_rib_entry);
-            printf("ptr addr:%lu\n", (uint64_t) tmp_p_rib_entry->routes);
-            printf("is_selected:%d, next_hop:%d, ptr route:%lu\n", tmp_p_rib_entry->routes->is_selected, tmp_p_rib_entry->routes->next_hop, (uint64_t) tmp_p_rib_entry->routes->route);
-            p_new_best_rn[i] = get_selected_route_node(tmp_p_rib_entry);
-            if (p_new_best_rn[i]) {
-                print_route(p_new_best_rn[i]->route);
-            }
             tmp_p_rib_entry = NULL;
             p_rib_entry = NULL;
         }
         // add potential msgs to next iteration
         for (i = 0; i < g_num; i++) {
             if (p_old_best_rn[i] == p_new_best_rn[i]) continue;
+            printf("asn:%d prepares to send inner msg\n", i);
+            // execute export policies and update inner msg lists 
             if (p_old_best_rn[i]) {
-                tmp_p_inner_msg = malloc(sizeof *tmp_p_inner_msg);
-                tmp_p_inner_msg->oprt_type = WITHDRAW;
-                tmp_p_inner_msg->src_asn = i;
-                execute_export_policy(pp_inner_msgs, g_num, p_old_best_rn[i]->next_hop, tmp_p_inner_msg, g_p_policies[i].export_policy);
+                execute_export_policy(pp_inner_msgs, g_num, g_p_policies[i].export_policy, i, p_new_best_rn[i]->next_hop, WITHDRAW, NULL);
                 if (p_old_best_rn[i]->is_selected == TO_BE_DEL) {
                     free_route(&p_old_best_rn[i]->route);
                     SAFE_FREE(p_old_best_rn[i]);
                 }
             }
             if (p_new_best_rn[i]) {
-                tmp_p_inner_msg = malloc(sizeof *tmp_p_inner_msg);
-                tmp_p_inner_msg->oprt_type = ANNOUNCE;
-                tmp_p_inner_msg->src_asn = i;
-                if (p_new_best_rn[i]->next_hop == i) {
-                    route_cpy(&tmp_p_inner_msg->src_route, NULL, p_new_best_rn[i]->route);
-                } else {
-                    route_cpy(&tmp_p_inner_msg->src_route, &i, p_new_best_rn[i]->route);
-                }
-                execute_export_policy(pp_inner_msgs, g_num, p_new_best_rn[i]->next_hop, tmp_p_inner_msg, g_p_policies[i].export_policy);
+                execute_export_policy(pp_inner_msgs, g_num, g_p_policies[i].export_policy, i, p_new_best_rn[i]->next_hop, ANNOUNCE, p_new_best_rn[i]->route);
             }
-            // execute export policies and update inner msg lists 
+            p_old_best_rn[i] = NULL;
+            p_new_best_rn[i] = NULL;
             processed_as_num_in_one_loop++;
         }
 
@@ -192,7 +170,11 @@ uint32_t compute_route(void *msg, size_t msg_size)
 
     // send updated routes back
     for (i = 0; i < g_num; i++) {
+        HASH_FIND_STR(g_pp_ribs[i], key, p_rib_entry);
+        p_new_best_rn[i] = get_selected_route_node(p_rib_entry);
         if (p_orig_best_rn[i] == p_new_best_rn[i]) continue;
+        if (p_new_best_rn[i] && p_new_best_rn[i]->next_hop == i) continue;
+        if (p_orig_best_rn[i] && p_orig_best_rn[i]->next_hop == i) continue;
         if (p_new_best_rn[i]) {
             // ANNOUNCE
             // asn(4) + oprt_type(1) + route(route_size)
@@ -205,20 +187,28 @@ uint32_t compute_route(void *msg, size_t msg_size)
         sent_msg_num++;
     }
     if (!sent_msg_num)  return SUCCESS;
-    sent_msg_size += 4; //sent_msg_num(4)
+    sent_msg_size += 4; // sent_msg_num(4)
     int offset = 0;
+    int ret;
     uint8_t *sent_msg = malloc(sent_msg_size);
     *((int *) sent_msg) = sent_msg_num;
     offset += 4;
     for (i = 0; i < g_num; i++) {
         if (p_orig_best_rn[i] == p_new_best_rn[i]) continue;
+        if (p_new_best_rn[i] && p_new_best_rn[i]->next_hop == i) continue;
+        if (p_orig_best_rn[i] && p_orig_best_rn[i]->next_hop == i) continue;
+
         *((uint32_t *) (sent_msg + offset)) = i;
         offset += 4;
         if (p_new_best_rn[i]) {
             // ANNOUNCE
             *((uint8_t *) (sent_msg + offset)) = ANNOUNCE;
             offset++;
-            offset += write_route_msg(sent_msg + offset, p_new_best_rn[i]->route);
+            ret = write_route_msg(sent_msg + offset, p_new_best_rn[i]->route);
+            offset += ret;
+            printf("asn:%d, write:%d bytes, ", i, ret);
+            print_route(p_new_best_rn[i]->route);
+            //offset += write_route_msg(sent_msg + offset, p_new_best_rn[i]->route);
         } else {
             // WITHDRAW
             *((uint8_t *) (sent_msg + offset)) = WITHDRAW;

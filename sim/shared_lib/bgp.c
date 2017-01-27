@@ -20,7 +20,7 @@ char *my_strdup(const char *s)
 
 void free_route(route_t **pp_route)
 {
-    if (!pp_route || *pp_route) {
+    if (!pp_route || !*pp_route) {
         return;
     }
     SAFE_FREE((*pp_route)->prefix);
@@ -415,21 +415,31 @@ void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uin
     cur_best_rn->is_selected = 1;
 }
 
-void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_t src_next_hop, rs_inner_msg_t *tmp_p_inner_msg, uint32_t *export_policy)
+void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_t *export_policy, uint32_t src_asn, uint32_t src_next_hop, uint8_t oprt_type, route_t *src_route)
 {
     uint32_t dst_asn;
+    rs_inner_msg_t *p_inner_msg = NULL;
     for (dst_asn = 0; dst_asn < num; dst_asn++) {
         if (export_policy[src_next_hop * num + dst_asn]) {
+            p_inner_msg = malloc(sizeof *p_inner_msg);
+            p_inner_msg->src_asn = src_asn;
+            p_inner_msg->oprt_type = oprt_type;
+            if (src_route) {
+                if (src_next_hop == src_asn) {
+                    route_cpy(&p_inner_msg->src_route, NULL, src_route);
+                } else {
+                    route_cpy(&p_inner_msg->src_route, &src_asn, src_route);
+                }
+            }
             if (pp_inner_msgs[dst_asn]) {
-                pp_inner_msgs[dst_asn]->prev->next = tmp_p_inner_msg;
-                pp_inner_msgs[dst_asn]->prev = tmp_p_inner_msg;
-                tmp_p_inner_msg->prev = pp_inner_msgs[dst_asn]->prev;
-                tmp_p_inner_msg->next = pp_inner_msgs[dst_asn];
-                pp_inner_msgs[dst_asn] = tmp_p_inner_msg;
+                pp_inner_msgs[dst_asn]->prev->next = p_inner_msg;
+                p_inner_msg->prev = pp_inner_msgs[dst_asn]->prev;
+                p_inner_msg->next = pp_inner_msgs[dst_asn];
+                pp_inner_msgs[dst_asn]->prev = p_inner_msg;
             } else {
-                pp_inner_msgs[dst_asn] = tmp_p_inner_msg;
-                pp_inner_msgs[dst_asn]->prev = tmp_p_inner_msg;
-                pp_inner_msgs[dst_asn]->next = tmp_p_inner_msg;
+                pp_inner_msgs[dst_asn] = p_inner_msg;
+                pp_inner_msgs[dst_asn]->prev = p_inner_msg;
+                pp_inner_msgs[dst_asn]->next = p_inner_msg;
             }
         }
     }

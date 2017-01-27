@@ -218,4 +218,4 @@ $(Enclave_Name): enclave.so
 .PHONY: clean
 
 clean:
-	@rm -rf $(App_Name) *.so *.a app/*.o enclave/*.o enclave/*_t.* enclave/*_u.* lib/*.o
+	@rm -rf $(App_Name) *.so *.a app/*.o enclave/*.o enclave/*_t.* enclave/*_u.* shared_lib/*.o app_lib/*.o

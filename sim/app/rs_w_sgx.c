@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "sgx_eid.h"
 #include "sgx_urts.h"
 #include "datatypes.h"
@@ -72,17 +73,20 @@ uint32_t ocall_update_route(void *msg, size_t msg_size)
     uint32_t asn;
     uint8_t oprt_type;
     route_t *p_route = NULL;
+    fprintf(IO_STREAM, "\nupdate msg num:%d, msg_size:%lu\n", msg_num, msg_size);
     for (i = 0; i < msg_num; i++) {
         asn = *((uint32_t *) ((uint8_t *) msg + offset));
         offset += 4;
         oprt_type = *((uint8_t *) msg + offset);
         offset++;
-        fprintf(IO_STREAM, "msg:%d, asn:%u, oprt_type:%u\n", i, asn, oprt_type);
+        fprintf(IO_STREAM, "msg_id:%d, asn:%u, oprt_type:%u\n", i, asn, oprt_type);
         if (oprt_type == ANNOUNCE) {
             offset += parse_route_from_channel(&p_route, (uint8_t *) msg + offset);
+            fprintf(IO_STREAM, "route: ");
             print_route(p_route);
             free_route(&p_route);
         }
     }
+    assert(msg_size == offset);
     return SUCCESS;
 }

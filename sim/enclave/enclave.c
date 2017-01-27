@@ -132,6 +132,8 @@ uint32_t compute_route(void *msg, size_t msg_size)
             if (p_new_best_rn[i]) {
                 printf("new best after this iteration: ");
                 print_route(p_new_best_rn[i]->route);
+            } else {
+                printf("new best after this iteration: NULL\n");
             }
 
             HASH_FIND_STR(g_pp_ribs[i], key, tmp_p_rib_entry);
@@ -150,7 +152,7 @@ uint32_t compute_route(void *msg, size_t msg_size)
             printf("asn:%d prepares to send inner msg\n", i);
             // execute export policies and update inner msg lists 
             if (p_old_best_rn[i]) {
-                execute_export_policy(pp_inner_msgs, g_num, g_p_policies[i].export_policy, i, p_new_best_rn[i]->next_hop, WITHDRAW, NULL);
+                execute_export_policy(pp_inner_msgs, g_num, g_p_policies[i].export_policy, i, p_old_best_rn[i]->next_hop, WITHDRAW, NULL);
                 if (p_old_best_rn[i]->is_selected == TO_BE_DEL) {
                     free_route(&p_old_best_rn[i]->route);
                     SAFE_FREE(p_old_best_rn[i]);

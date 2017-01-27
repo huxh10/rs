@@ -322,7 +322,7 @@ route_node_t* get_selected_route_node(rib_map_t *p_rib_entry)
     }
     p_tmp = p_rib_entry->routes;
     while (p_tmp) {
-        if (p_tmp->is_selected) {
+        if (p_tmp->is_selected == 1) {
             return p_tmp;
         } else {
             p_tmp = p_tmp->next;
@@ -383,10 +383,19 @@ void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uin
 
     // traverse and delete
     route_node_t *tmp_rn = p_rib_entry->routes;
-    while (!tmp_rn) {
+    while (tmp_rn) {
         if (tmp_rn->next_hop == src_asn) {
-            if (tmp_rn->prev) tmp_rn->prev->next = tmp_rn->next;
-            if (tmp_rn->next) tmp_rn->next->prev = tmp_rn->prev;
+            if (tmp_rn->prev && tmp_rn->next) {
+                tmp_rn->prev->next = tmp_rn->next;
+                tmp_rn->next->prev = tmp_rn->prev;
+            } else if (tmp_rn->next) {
+                tmp_rn->next->prev = tmp_rn->prev;
+                p_rib_entry->routes = tmp_rn->next;
+            } else if (tmp_rn->prev) {
+                tmp_rn->prev->next = tmp_rn->next;
+            } else {
+                p_rib_entry->routes = NULL;
+            }
             if (tmp_rn->is_selected == 1) del_best_rn_flag = 1;
             if (tmp_rn != p_old_best_rn) {
                 // p_old_best_rn will be freed after a whole iteration
@@ -395,6 +404,7 @@ void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uin
             } else {
                 tmp_rn->is_selected = TO_BE_DEL;
             }
+            break;
         } else {
             tmp_rn = tmp_rn->next;
         }
@@ -424,6 +434,9 @@ void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_
             p_inner_msg = malloc(sizeof *p_inner_msg);
             p_inner_msg->src_asn = src_asn;
             p_inner_msg->oprt_type = oprt_type;
+            p_inner_msg->src_route = NULL;
+            p_inner_msg->prev = NULL;
+            p_inner_msg->next = NULL;
             if (src_route) {
                 if (src_next_hop == src_asn) {
                     route_cpy(&p_inner_msg->src_route, NULL, src_route);
@@ -436,6 +449,7 @@ void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_
                 p_inner_msg->prev = pp_inner_msgs[dst_asn]->prev;
                 p_inner_msg->next = pp_inner_msgs[dst_asn];
                 pp_inner_msgs[dst_asn]->prev = p_inner_msg;
+                pp_inner_msgs[dst_asn] = p_inner_msg;
             } else {
                 pp_inner_msgs[dst_asn] = p_inner_msg;
                 pp_inner_msgs[dst_asn]->prev = p_inner_msg;

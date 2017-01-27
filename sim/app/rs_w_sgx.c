@@ -87,6 +87,7 @@ uint32_t ocall_update_route(void *msg, size_t msg_size)
             free_route(&p_route);
         }
     }
+    printf("\n\n");
     assert(msg_size == offset);
     return SUCCESS;
 }

@@ -415,7 +415,7 @@ void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uin
     route_node_t *cur_best_rn = p_rib_entry->routes;
     if (!cur_best_rn) return;
     tmp_rn = cur_best_rn->next;
-    while (!tmp_rn) {
+    while (tmp_rn) {
         ret = import_policy[cur_best_rn->next_hop] - import_policy[tmp_rn->next_hop];
         if (ret > 0 || (ret = 0 && _route_cmp(cur_best_rn->route, tmp_rn->route) < 0)) {
             cur_best_rn = tmp_rn;

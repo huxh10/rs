@@ -7,9 +7,9 @@
 #include "error_codes.h"
 #include "time_utils.h"
 #include "bgp.h"
+#include "rs.h"
 #include "../enclave/enclave_u.h"
 #include "rs_w_sgx.h"
-#include "uthash.h"
 
 sgx_enclave_id_t g_enclave_id;
 
@@ -36,11 +36,11 @@ void init_rs_w_sgx(uint32_t num, as_conf_t *p_as_conf)
     uint32_t ret_status, call_status, i;
     g_enclave_id = load_enclave();
     for (i = 0; i < num; i++) {
-        call_status = enclave_load_as_conf(g_enclave_id, &ret_status, i, (void *) p_as_conf[i].import_policy, num * sizeof(uint32_t), (void *) p_as_conf[i].export_policy, num * num * sizeof(uint32_t));
+        call_status = enclave_ecall_load_as_conf(g_enclave_id, &ret_status, i, (void *) p_as_conf[i].import_policy, num * sizeof(uint32_t), (void *) p_as_conf[i].export_policy, num * num * sizeof(uint32_t));
         if (ret_status == SUCCESS) {
-            fprintf(IO_STREAM, "enclave_load_as_conf asn:%u succeeded [%s]\n", i, __FUNCTION__);
+            //fprintf(IO_STREAM, "enclave_load_as_conf asn:%u succeeded [%s]\n", i, __FUNCTION__);
         } else {
-            fprintf(IO_STREAM, "enclave_load_as_conf failed, asn:%u, errno:%u [%s]\n", i, ret_status, __FUNCTION__);
+            //fprintf(IO_STREAM, "enclave_load_as_conf failed, asn:%u, errno:%u [%s]\n", i, ret_status, __FUNCTION__);
             exit(-1);
         }
     }
@@ -52,8 +52,15 @@ void run_rs_w_sgx(int msg_num, bgp_msg_t **pp_bgp_msgs)
     uint32_t call_status, ret_status;
 
     for (i = 0; i < msg_num; i++) {
+        printf("\n");
         print_current_time_with_us("compute routes");
-        call_status = enclave_compute_route(g_enclave_id, &ret_status, (void *) pp_bgp_msgs[i], pp_bgp_msgs[i]->msg_size);
+        call_status = enclave_ecall_compute_route(g_enclave_id, &ret_status, (void *) pp_bgp_msgs[i], pp_bgp_msgs[i]->msg_size);
+        printf("\n");
+        print_current_time_with_us("receive routes");
+        //printf("\n");
+        //print_current_time_with_us("current rs routes");
+        //call_status = enclave_ecall_print_rs_ribs(g_enclave_id, &ret_status);
+        //
     }
 }
 
@@ -68,26 +75,8 @@ void ocall_print_string(const char *str)
 
 uint32_t ocall_update_route(void *msg, size_t msg_size)
 {
-    print_current_time_with_us("receive routes");
-    int msg_num = *((int *) msg), i = 0, offset = 4;
-    uint32_t asn;
-    uint8_t oprt_type;
-    route_t *p_route = NULL;
-    fprintf(IO_STREAM, "\nupdate msg num:%d, msg_size:%lu\n", msg_num, msg_size);
-    for (i = 0; i < msg_num; i++) {
-        asn = *((uint32_t *) ((uint8_t *) msg + offset));
-        offset += 4;
-        oprt_type = *((uint8_t *) msg + offset);
-        offset++;
-        fprintf(IO_STREAM, "msg_id:%d, asn:%u, oprt_type:%u\n", i, asn, oprt_type);
-        if (oprt_type == ANNOUNCE) {
-            offset += parse_route_from_channel(&p_route, (uint8_t *) msg + offset);
-            fprintf(IO_STREAM, "route: ");
-            print_route(p_route);
-            free_route(&p_route);
-        }
-    }
-    printf("\n\n");
-    assert(msg_size == offset);
+    //printf("\n");
+    //print_current_time_with_us("receive routes");
+    //return update_route(msg, msg_size);
     return SUCCESS;
 }

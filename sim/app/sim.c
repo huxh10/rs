@@ -8,6 +8,8 @@
 
 #ifdef W_SGX
 #include "rs_w_sgx.h"
+#else
+#include "rs_wo_sgx.h"
 #endif
 
 #ifndef SAFE_FREE
@@ -96,9 +98,12 @@ int main()
     fprintf(IO_STREAM, "loading passed\n");
 
 #ifdef W_SGX
+    printf("wsgx\n");
     init_rs_w_sgx(total_num, p_as_conf);
     run_rs_w_sgx(msg_num, pp_bgp_msgs);
 #else
+    printf("wosgx\n");
+    run_rs_wo_sgx(total_num, p_as_conf, msg_num, pp_bgp_msgs);
 #endif
 
     return 0;

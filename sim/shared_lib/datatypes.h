@@ -7,6 +7,11 @@
 
 #define BGP_UPDATE_FILE "conf/bgp_update.conf"
 
+#define GLOBAL_ACCESS   0
+#define MSG_QUEUE       1
+
+#define VERBOSE         1
+
 // next hop policy type
 // import_policy[total_num] for route selection
 //      import_policy[i] means the order of as i route

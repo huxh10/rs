@@ -102,8 +102,7 @@ else
 	App_Link_Flags += -lsgx_uae_service
 endif
 
-App_C_Objects_W_SGX := $(App_C_Files:.c=.wsgx.o)
-App_C_Objects_Wo_SGX := $(App_C_Files:.c=.wosgx.o)
+#App_C_Objects := $(App_C_Files:.c=.o)
 
 App_W_SGX := rs_w_sgx
 App_Wo_SGX := rs_wo_sgx
@@ -190,19 +189,27 @@ app/enclave_u.o: enclave/enclave_u.c
 	@$(CC) $(App_Compile_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-app/%.wosgx.o: app/%.c
+app/rs_w_sgx.o: app/rs_w_sgx.c
 	@$(CC) $(App_Compile_Flags) -c $< -o $@
 	@echo "CC  <=  $<"
 
-app/%.wsgx.o: app/%.c
+app/rs_wo_sgx.o: app/rs_wo_sgx.c
+	@$(CC) $(App_Compile_Flags) -c $< -o $@
+	@echo "CC  <=  $<"
+
+app/sim.wosgx.o: app/sim.c
+	@$(CC) $(App_Compile_Flags) -c $< -o $@
+	@echo "CC  <=  $<"
+
+app/sim.wsgx.o: app/sim.c
 	@$(CC) $(App_Compile_Flags) -DW_SGX -c $< -o $@
 	@echo "CC  <=  $<"
 
-$(App_Wo_SGX): app/enclave_u.o $(App_C_Objects_Wo_SGX) $(App_Lib_Objects) $(Shared_Lib_Objects)
+$(App_Wo_SGX): app/sim.wosgx.o app/rs_wo_sgx.o $(App_Lib_Objects) $(Shared_Lib_Objects)
 	@$(CC) $^ -o $@ $(App_Link_Flags)
 	@echo "LINK =>  $@"
 
-$(App_W_SGX): app/enclave_u.o $(App_C_Objects_W_SGX) $(App_Lib_Objects) $(Shared_Lib_Objects)
+$(App_W_SGX): app/enclave_u.o app/sim.wsgx.o app/rs_w_sgx.o $(App_Lib_Objects) $(Shared_Lib_Objects)
 	@$(CC) $^ -o $@ $(App_Link_Flags)
 	@echo "LINK =>  $@"
 

@@ -1,7 +1,0 @@
-enclave {
-    from "../trusted_agent_code/trusted_agent_code.edl" import *;
-
-    trusted {
-        public uint32_t handle_r_exch_data(uint32_t src_id, uint32_t dst_id, [in, size = msg_size] void *msg, size_t msg_size);
-    };
-};

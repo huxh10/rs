@@ -265,6 +265,7 @@ void generate_bgp_msg(bgp_msg_t **pp_bgp_msg, route_t *input, uint32_t asn, uint
     // copy each field and add number header for each field
     (*pp_bgp_msg)->msg_size = sizeof(bgp_msg_t) + route_size;
     (*pp_bgp_msg)->asn = asn;
+    (*pp_bgp_msg)->next_hop = input->as_path.asns[0];
     (*pp_bgp_msg)->oprt_type = oprt_type;
     write_route_msg((*pp_bgp_msg)->route, input);
 }
@@ -314,13 +315,12 @@ void route_cpy(route_t **dst_route, uint32_t *src_asn, route_t *src_route)
     (*dst_route)->atomic_aggregate = src_route->atomic_aggregate;
 }
 
-route_node_t* get_selected_route_node(rib_map_t *p_rib_entry)
+route_node_t* get_selected_route_node(route_node_t *p_rns)
 {
-    route_node_t *p_tmp;
-    if (!p_rib_entry) {
+    if (!p_rns) {
         return NULL;
     }
-    p_tmp = p_rib_entry->routes;
+    route_node_t *p_tmp = p_rns;
     while (p_tmp) {
         if (p_tmp->is_selected == 1) {
             return p_tmp;
@@ -331,58 +331,55 @@ route_node_t* get_selected_route_node(rib_map_t *p_rib_entry)
     return NULL;
 }
 
-void add_route(rib_map_t **pp_rib_entry, uint32_t src_asn, route_t *src_route, uint32_t *import_policy)
+void add_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint32_t *import_policy)
 {
     int ret;
-    if (!pp_rib_entry) return;
-    if (!*pp_rib_entry) {
-        *pp_rib_entry = malloc(sizeof **pp_rib_entry);
-        (*pp_rib_entry)->routes = NULL;
-    }
+    if (!pp_rns) return;
 
-    route_node_t *tmp_rn = NULL;
+    // create new route node
     route_node_t *p_rn = malloc(sizeof *p_rn);
     p_rn->is_selected = 0;
     p_rn->next_hop = src_asn;
     p_rn->prev = NULL;
     p_rn->next = NULL;
     route_cpy(&p_rn->route, NULL, src_route);
-    // add new route node
-    p_rn->next = (*pp_rib_entry)->routes;
-    if ((*pp_rib_entry)->routes) {
-        (*pp_rib_entry)->routes->prev = p_rn;
-    }
-    (*pp_rib_entry)->routes = p_rn;
 
-    tmp_rn = get_selected_route_node(*pp_rib_entry);
-    if (!tmp_rn) {
+    // add new route node to the list
+    if (!*pp_rns) {
+        *pp_rns = p_rn;
         p_rn->is_selected = 1;
+        return;
+    }
+    p_rn->next = *pp_rns;
+    (*pp_rns)->prev = p_rn;
+    *pp_rns = p_rn;
+
+    route_node_t *tmp_rn = get_selected_route_node(*pp_rns);
+    assert(tmp_rn);
+    ret = import_policy[p_rn->next_hop] - import_policy[tmp_rn->next_hop];
+    if (ret < 0) {
+        tmp_rn->is_selected = 0;
+        p_rn->is_selected = 1;
+    } else if (ret > 0) {
+        return;
     } else {
-        ret = import_policy[p_rn->next_hop] - import_policy[tmp_rn->next_hop];
-        if (ret < 0) {
+        if (_route_cmp(p_rn->route, tmp_rn->route) > 0) {
             tmp_rn->is_selected = 0;
             p_rn->is_selected = 1;
-        } else if (ret > 0) {
-            return;
         } else {
-            if (_route_cmp(p_rn->route, tmp_rn->route) > 0) {
-                tmp_rn->is_selected = 0;
-                p_rn->is_selected = 1;
-            } else {
-                return;
-            }
+            return;
         }
     }
 }
 
-void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uint32_t *import_policy, route_node_t *p_old_best_rn)
+void del_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint32_t *import_policy, route_node_t *p_old_best_rn)
 {
-    if (!p_rib_entry) return;
-    if (!p_rib_entry->routes) return;
+    if (!pp_rns) return;
+    if (!*pp_rns) return;
     int del_best_rn_flag = 0, ret = 0;
 
     // traverse and delete
-    route_node_t *tmp_rn = p_rib_entry->routes;
+    route_node_t *tmp_rn = *pp_rns;
     while (tmp_rn) {
         if (tmp_rn->next_hop == src_asn) {
             if (tmp_rn->prev && tmp_rn->next) {
@@ -390,18 +387,19 @@ void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uin
                 tmp_rn->next->prev = tmp_rn->prev;
             } else if (tmp_rn->next) {
                 tmp_rn->next->prev = tmp_rn->prev;
-                p_rib_entry->routes = tmp_rn->next;
+                *pp_rns = tmp_rn->next;
             } else if (tmp_rn->prev) {
                 tmp_rn->prev->next = tmp_rn->next;
             } else {
-                p_rib_entry->routes = NULL;
+                *pp_rns = NULL;
             }
             if (tmp_rn->is_selected == 1) del_best_rn_flag = 1;
             if (tmp_rn != p_old_best_rn) {
-                // p_old_best_rn will be freed after a whole iteration
                 free_route(&tmp_rn->route);
                 SAFE_FREE(tmp_rn);
             } else {
+                // p_old_best_rn will be freed after a whole iteration
+                // p_old_best_rn is needed to construct the inner msg
                 tmp_rn->is_selected = TO_BE_DEL;
             }
             break;
@@ -412,7 +410,7 @@ void del_route(rib_map_t *p_rib_entry, uint32_t src_asn, route_t *src_route, uin
     if (!del_best_rn_flag) return;
 
     // the best route node has been deleted, select a new one
-    route_node_t *cur_best_rn = p_rib_entry->routes;
+    route_node_t *cur_best_rn = *pp_rns;
     if (!cur_best_rn) return;
     tmp_rn = cur_best_rn->next;
     while (tmp_rn) {

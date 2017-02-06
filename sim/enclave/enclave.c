@@ -10,6 +10,7 @@
 uint32_t g_num = 0;
 as_conf_t *g_p_policies = NULL;
 rib_map_t **g_pp_ribs = NULL;
+simplified_rib_map_t **g_pp_simplified_ribs = NULL;
 
 /*
  * printf:
@@ -32,8 +33,10 @@ uint32_t ecall_load_as_conf(uint32_t asn, void *import_msg, size_t import_msg_si
         g_num = total_num;
         g_p_policies = malloc(total_num * sizeof *g_p_policies);
         g_pp_ribs = malloc(total_num * sizeof *g_pp_ribs);
+        g_pp_simplified_ribs = malloc(total_num * sizeof *g_pp_simplified_ribs);
         for (i = 0; i < total_num; i++) {
             g_pp_ribs[i] = NULL;
+            g_pp_simplified_ribs[i] = NULL;
         }
     }
     g_p_policies[asn].asn = asn;
@@ -45,12 +48,26 @@ uint32_t ecall_load_as_conf(uint32_t asn, void *import_msg, size_t import_msg_si
     return SGX_SUCCESS;
 }
 
-uint32_t ecall_compute_route(void *msg, size_t msg_size)
+uint32_t ecall_compute_route_by_msg_queue(void *msg, size_t msg_size)
 {
     void *sent_msg = NULL;
     size_t sent_msg_size = 0;
     uint32_t call_status, ret_status;
-    compute_route(msg, msg_size, g_p_policies, g_pp_ribs, g_num, &sent_msg, &sent_msg_size);
+    compute_route_by_msg_queue(msg, msg_size, g_p_policies, g_pp_ribs, g_num, &sent_msg, &sent_msg_size);
+    call_status = ocall_update_route(&ret_status, (void *) sent_msg, sent_msg_size);
+    if (call_status == SGX_SUCCESS) {
+        if (ret_status != SGX_SUCCESS) return ret_status;
+    } else {
+        return call_status;
+    }
+}
+
+uint32_t ecall_compute_route_by_global_access(void *msg, size_t msg_size)
+{
+    void *sent_msg = NULL;
+    size_t sent_msg_size = 0;
+    uint32_t call_status, ret_status;
+    compute_route_by_global_access(msg, msg_size, g_p_policies, g_pp_simplified_ribs, g_num, &sent_msg, &sent_msg_size);
     call_status = ocall_update_route(&ret_status, (void *) sent_msg, sent_msg_size);
     if (call_status == SGX_SUCCESS) {
         if (ret_status != SGX_SUCCESS) return ret_status;
@@ -62,4 +79,9 @@ uint32_t ecall_compute_route(void *msg, size_t msg_size)
 uint32_t ecall_print_rs_ribs()
 {
     return print_rs_ribs(g_pp_ribs, g_num);
+}
+
+uint32_t ecall_print_rs_simplified_ribs()
+{
+    return print_rs_simplified_ribs(g_pp_simplified_ribs, g_num);
 }

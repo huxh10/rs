@@ -1,3 +1,0 @@
-enclave {
-    from "../trusted_agent_code/trusted_agent_code.edl" import *;
-};

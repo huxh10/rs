@@ -1,8 +1,10 @@
 enclave {
     trusted {
         public uint32_t ecall_load_as_conf(uint32_t asn, [in, size = import_msg_size] void *import_msg, size_t import_msg_size, [in, size = export_msg_size] void *export_msg, size_t export_msg_size);
-        public uint32_t ecall_compute_route([in, size = msg_size] void *msg, size_t msg_size);
+        public uint32_t ecall_compute_route_by_msg_queue([in, size = msg_size] void *msg, size_t msg_size);
         public uint32_t ecall_print_rs_ribs();
+        public uint32_t ecall_compute_route_by_global_access([in, size = msg_size] void *msg, size_t msg_size);
+        public uint32_t ecall_print_rs_simplified_ribs();
     };
 
     untrusted {

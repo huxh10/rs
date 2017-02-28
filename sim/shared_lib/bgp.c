@@ -270,6 +270,9 @@ void generate_bgp_msg(bgp_msg_t **pp_bgp_msg, route_t *input, uint32_t asn, uint
     write_route_msg((*pp_bgp_msg)->route, input);
 }
 
+// ret < 0: r2 is better, ret > 0: r1 is better
+// if r1 is the same as r2, then we return r1 > r2
+// r1 should be the old best route to prefer recent route
 int _route_cmp(route_t *r1, route_t *r2)
 {
     /*------- lowest path length -------*/
@@ -331,7 +334,7 @@ route_node_t* get_selected_route_node(route_node_t *p_rns)
     return NULL;
 }
 
-void add_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint32_t *import_policy)
+void add_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint8_t *import_policy)
 {
     int ret;
     if (!pp_rns) return;
@@ -363,7 +366,7 @@ void add_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint
     } else if (ret > 0) {
         return;
     } else {
-        if (_route_cmp(p_rn->route, tmp_rn->route) > 0) {
+        if (_route_cmp(tmp_rn->route, p_rn->route) < 0) {
             tmp_rn->is_selected = 0;
             p_rn->is_selected = 1;
         } else {
@@ -372,7 +375,7 @@ void add_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint
     }
 }
 
-void del_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint32_t *import_policy, route_node_t *p_old_best_rn)
+void del_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint8_t *import_policy, route_node_t *p_old_best_rn)
 {
     if (!pp_rns) return;
     if (!*pp_rns) return;
@@ -423,7 +426,7 @@ void del_route(route_node_t **pp_rns, uint32_t src_asn, route_t *src_route, uint
     cur_best_rn->is_selected = 1;
 }
 
-void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint32_t *export_policy, uint32_t src_asn, uint32_t src_next_hop, uint8_t oprt_type, route_t *src_route)
+void execute_export_policy(rs_inner_msg_t **pp_inner_msgs, uint32_t num, uint8_t *export_policy, uint32_t src_asn, uint32_t src_next_hop, uint8_t oprt_type, route_t *src_route)
 {
     uint32_t dst_asn;
     rs_inner_msg_t *p_inner_msg = NULL;

@@ -80,10 +80,10 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
 
                 // update entry
                 if (tmp_p_inner_msg->oprt_type == ANNOUNCE) {
-                    // printf("iteration:%d, asn:%u, receive ANNOUNCE msg from:%d\n", iteration, i, tmp_p_inner_msg->src_asn);
+                    //printf("iteration:%d, asn:%u, receive ANNOUNCE msg from:%d\n", iteration, i, tmp_p_inner_msg->src_asn);
                     add_route(&p_curr_rns[i], tmp_p_inner_msg->src_asn, tmp_p_inner_msg->src_route, p_policies[i].import_policy);
                 } else if (tmp_p_inner_msg->oprt_type == WITHDRAW) {
-                    // printf("iteration:%d, asn:%u, receive WITHDRAW msg from:%d\n", iteration, i, tmp_p_inner_msg->src_asn);
+                    //printf("iteration:%d, asn:%u, receive WITHDRAW msg from:%d\n", iteration, i, tmp_p_inner_msg->src_asn);
                     del_route(&p_curr_rns[i], tmp_p_inner_msg->src_asn, tmp_p_inner_msg->src_route, p_policies[i].import_policy, p_old_best_rn[i]);
                 }
 
@@ -111,9 +111,10 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
         // add potential msgs to next iteration
         for (i = 0; i < num; i++) {
             if (p_old_best_rn[i] == p_new_best_rn[i]) continue;
-            // printf("asn:%d prepares to send inner msg\n", i);
+            //printf("asn:%d prepares to send inner msg\n", i);
             // execute export policies and update inner msg lists 
             if (p_old_best_rn[i]) {
+                //printf("    old next_hop:%u\n", p_old_best_rn[i]->next_hop);
                 execute_export_policy(pp_inner_msgs, num, p_policies[i].export_policy, i, p_old_best_rn[i]->next_hop, WITHDRAW, NULL);
                 if (p_old_best_rn[i]->is_selected == TO_BE_DEL) {
                     free_route(&p_old_best_rn[i]->route);
@@ -121,6 +122,7 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
                 }
             }
             if (p_new_best_rn[i]) {
+                //printf("    new next_hop:%u\n", p_new_best_rn[i]->next_hop);
                 execute_export_policy(pp_inner_msgs, num, p_policies[i].export_policy, i, p_new_best_rn[i]->next_hop, ANNOUNCE, p_new_best_rn[i]->route);
             }
             p_old_best_rn[i] = NULL;
@@ -131,6 +133,8 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
         // converged
         if (!processed_as_num_in_one_loop) break;
     }
+
+    SAFE_FREE(pp_inner_msgs);
 
     // update the sender rib
     p_new_best_rn[orig_sender_asn] = get_selected_route_node(p_curr_rns[orig_sender_asn]);
@@ -153,7 +157,7 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
         }
     }
 
-    // send updated routes back
+    // send updated routes back and update related ribs
     *p_sent_msg_size = 0;
     for (i = 0; i < num; i++) {
         if (i == orig_sender_asn) continue;
@@ -262,7 +266,7 @@ uint32_t compute_route_by_global_access(void *msg, size_t msg_size, as_conf_t *p
     HASH_FIND_STR(pp_ribs[orig_sender_asn], key, p_rib_entry);
     if (p_bgp_msg->oprt_type == ANNOUNCE) {
         if (!p_rib_entry) {
-            //printf("iteration:0, asn:%u, create next_hop:%u\n", orig_sender_asn, p_bgp_msg->next_hop);
+            printf("iteration:0, asn:%u, create next_hop:%u\n", orig_sender_asn, p_bgp_msg->next_hop);
             p_rib_entry = malloc(sizeof *p_rib_entry);
             p_rib_entry->key = key;
             p_rib_entry->next_hop = p_bgp_msg->next_hop;
@@ -270,13 +274,13 @@ uint32_t compute_route_by_global_access(void *msg, size_t msg_size, as_conf_t *p
             curr_is_valid[orig_sender_asn] = 1;
             curr_next_hop[orig_sender_asn] = p_bgp_msg->next_hop;
         } else {
-            //printf("iteration:0, asn:%u, update next_hop:%u\n", orig_sender_asn, p_bgp_msg->next_hop);
+            printf("iteration:0, asn:%u, update next_hop:%u\n", orig_sender_asn, p_bgp_msg->next_hop);
             p_rib_entry->next_hop = p_bgp_msg->next_hop;
             curr_next_hop[orig_sender_asn] = p_bgp_msg->next_hop;
         }
     } else {
         if (p_rib_entry) {
-            //printf("iteration:0, asn:%u, WITHDRAW next_hop:%u\n", orig_sender_asn, p_rib_entry->next_hop);
+            printf("iteration:0, asn:%u, WITHDRAW next_hop:%u\n", orig_sender_asn, p_rib_entry->next_hop);
             HASH_DEL(pp_ribs[orig_sender_asn], p_rib_entry);
             SAFE_FREE(p_rib_entry->key);
             SAFE_FREE(p_rib_entry);
@@ -284,7 +288,7 @@ uint32_t compute_route_by_global_access(void *msg, size_t msg_size, as_conf_t *p
         }
     }
 
-    // we'll update ribs after routes are converged
+    // we'll update other ribs after routes are converged
     while (1) {
         // iterate until routes are converged
         iteration++;
@@ -295,7 +299,7 @@ uint32_t compute_route_by_global_access(void *msg, size_t msg_size, as_conf_t *p
             if (i == orig_sender_asn) continue;
             // WITHDRAW check first
             if (curr_is_valid[i] && !curr_is_valid[curr_next_hop[i]]) {
-                //printf("iteration:%u, asn:%u, WITHDRAW next_hop:%u\n", iteration, i, curr_next_hop[i]);
+                printf("iteration:%u, asn:%u, WITHDRAW next_hop:%u\n", iteration, i, curr_next_hop[i]);
                 curr_is_valid[i] = 0;
                 processed_as_num_in_one_loop++;
             }
@@ -307,11 +311,11 @@ uint32_t compute_route_by_global_access(void *msg, size_t msg_size, as_conf_t *p
                     curr_is_valid[i] = 1;
                     curr_next_hop[i] = j;
                     processed_as_num_in_one_loop++;
-                    //printf("iteration:%u, asn:%u, create next_hop:%u\n", iteration, i, j);
+                    printf("iteration:%u, asn:%u, create next_hop:%u\n", iteration, i, j);
                 } else if (p_policies[i].import_policy[j] < p_policies[i].import_policy[curr_next_hop[i]]) {
                     curr_next_hop[i] = j;
                     processed_as_num_in_one_loop++;
-                    //printf("iteration:%u, asn:%u, update next_hop:%u\n", iteration, i, j);
+                    printf("iteration:%u, asn:%u, update next_hop:%u\n", iteration, i, j);
                 }
             }
         }
@@ -320,7 +324,7 @@ uint32_t compute_route_by_global_access(void *msg, size_t msg_size, as_conf_t *p
         if (!processed_as_num_in_one_loop) break;
     }
 
-    // update rib and send updated routes back
+    // update ribs and send updated routes back
     *p_sent_msg_size = 0;
     for (i = 0; i < num; i++) {
         if (i == orig_sender_asn) continue;
@@ -391,6 +395,22 @@ uint32_t compute_route_by_global_access(void *msg, size_t msg_size, as_conf_t *p
     return SUCCESS;
 }
 
+uint32_t get_rs_ribs_num(rib_map_t **pp_ribs, uint32_t num)
+{
+    uint32_t i, count = 0;
+    rib_map_t *p_rib_entry = NULL, *tmp_p_rib_entry = NULL;
+    route_node_t *p_best_rn = NULL;
+
+    for (i = 0; i < num; i++) {
+        HASH_ITER(hh, pp_ribs[i], p_rib_entry, tmp_p_rib_entry) {
+            count++;
+        }
+    }
+    printf("total ribs entry num: %d\n", count);
+    return SUCCESS;
+
+}
+
 uint32_t print_rs_ribs(rib_map_t **pp_ribs, uint32_t num)
 {
     uint32_t i;
@@ -407,6 +427,20 @@ uint32_t print_rs_ribs(rib_map_t **pp_ribs, uint32_t num)
             }
         }
     }
+    return SUCCESS;
+}
+
+uint32_t get_rs_simplified_ribs_num(simplified_rib_map_t **pp_ribs, uint32_t num)
+{
+    uint32_t i, count = 0;
+    simplified_rib_map_t *p_rib_entry = NULL, *tmp_p_rib_entry = NULL;
+
+    for (i = 0; i < num; i++) {
+        HASH_ITER(hh, pp_ribs[i], p_rib_entry, tmp_p_rib_entry) {
+            count++;
+        }
+    }
+    printf("total ribs entry num: %d\n", count);
     return SUCCESS;
 }
 

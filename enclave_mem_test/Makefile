@@ -49,7 +49,7 @@ else
 endif
 
 Enclave_C_Files := $(wildcard enclave/*.c)
-Enclave_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I./shared_lib
+Enclave_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport
 
 Enclave_Compile_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)
 
@@ -80,7 +80,7 @@ else
 endif
 
 App_C_Files := $(wildcard app/*.c)
-App_Include_Paths := -I$(SGX_SDK)/include -I./app_lib -I./shared_lib
+App_Include_Paths := -I$(SGX_SDK)/include
 
 App_Compile_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
 # Three configuration modes - Debug, prerelease, release
@@ -103,22 +103,8 @@ else
 	App_Link_Flags += -lsgx_uae_service
 endif
 
-#App_C_Objects := $(App_C_Files:.c=.o)
-
-App_W_SGX := rs_w_sgx
-App_Wo_SGX := rs_wo_sgx
-
-######## Library Settings ########
-
-Shared_Lib_C_Files := $(wildcard shared_lib/*.c)
-Shared_Lib_Objects := $(Shared_Lib_C_Files:.c=.o)
-
-#Trust_Lib_Objects := $(subst lib,enclave,$(Lib_Objects))
-Shared_Lib_Include_Paths := -I$(SGX_SDK)/include -nostdinc -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport
-Shared_Lib_Compile_Flags := $(SGX_COMMON_CFLAGS) -fvisibility=hidden -fpie -fstack-protector $(Shared_Lib_Include_Paths)
-
-App_Lib_C_Files := $(wildcard app_lib/*.c)
-App_Lib_Objects := $(App_Lib_C_Files:.c=.o)
+App_C_Objects := $(App_C_Files:.c=.o)
+App := mem_test
 
 ######## ########
 
@@ -149,15 +135,15 @@ endif
 #endif
 
 ifeq ($(Build_Mode), HW_RELEASE)
-all: enclave.so $(App_W_SGX) $(App_Wo_SGX)
+all: enclave.so $(App)
 	@echo "The project has been built in release hardware mode."
-	@echo "Please sign the enclaves (enclave.so) first with your signing keys before you run the $(App_W_SGX) $(App_Wo_SGX) to launch and access the enclave."
+	@echo "Please sign the enclaves (enclave.so) first with your signing keys before you run the $(App) to launch and access the enclave."
 	@echo "To sign the enclaves use the following commands:"
 	@echo "   $(SGX_ENCLAVE_SIGNER) sign -key <key> -enclave enclave.so -out <$(Enclave_Name)> -config enclave/enclave.config.xml"
 	@echo "You can also sign the enclaves using an external signing tool."
 	@echo "To build the project in simulation mode set SGX_MODE=SIM. To build the project in prerelease mode set SGX_PRERELEASE=1 and SGX_MODE=HW."
 else
-all: $(Enclave_Name) $(App_W_SGX) $(App_Wo_SGX)
+all: $(Enclave_Name) $(App)
 ifeq ($(Build_Mode), HW_DEBUG)
 	@echo "The project has been built in debug hardware mode."
 else ifeq ($(Build_Mode), SIM_DEBUG)
@@ -171,16 +157,6 @@ else
 endif
 endif
 
-######## Library Objects ########
-
-app_lib/%.o: app_lib/%.c
-	@$(CC) $(App_Compile_Flags) -c $< -o $@
-	@echo "CC  <=  $<"
-
-shared_lib/%.o: shared_lib/%.c
-	@$(CC) $(Shared_Lib_Compile_Flags) -c $< -o $@
-	@echo "CC  <=  $<"
-
 ######## App Objects ########
 enclave/enclave_u.c enclave/enclave_u.h: $(SGX_EDGER8R) enclave/enclave.edl
 	@cd enclave && $(SGX_EDGER8R) --use-prefix --untrusted ../enclave/enclave.edl --search-path $(SGX_SDK)/include 
@@ -190,27 +166,11 @@ app/enclave_u.o: enclave/enclave_u.c
 	@$(CC) $(App_Compile_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-app/rs_w_sgx.o: app/rs_w_sgx.c
+app/main.o: app/main.c
 	@$(CC) $(App_Compile_Flags) -c $< -o $@
 	@echo "CC  <=  $<"
 
-app/rs_wo_sgx.o: app/rs_wo_sgx.c
-	@$(CC) $(App_Compile_Flags) -c $< -o $@
-	@echo "CC  <=  $<"
-
-app/sim.wosgx.o: app/sim.c
-	@$(CC) $(App_Compile_Flags) -c $< -o $@
-	@echo "CC  <=  $<"
-
-app/sim.wsgx.o: app/sim.c
-	@$(CC) $(App_Compile_Flags) -DW_SGX -c $< -o $@
-	@echo "CC  <=  $<"
-
-$(App_Wo_SGX): app/sim.wosgx.o app/rs_wo_sgx.o $(App_Lib_Objects) $(Shared_Lib_Objects)
-	@$(CC) $^ -o $@ $(App_Link_Flags)
-	@echo "LINK =>  $@"
-
-$(App_W_SGX): app/enclave_u.o app/sim.wsgx.o app/rs_w_sgx.o $(App_Lib_Objects) $(Shared_Lib_Objects)
+$(App): app/enclave_u.o app/main.o
 	@$(CC) $^ -o $@ $(App_Link_Flags)
 	@echo "LINK =>  $@"
 
@@ -224,8 +184,8 @@ enclave/%.o: enclave/%.c
 	@$(CC) -nostdinc $(Enclave_Compile_Flags) -c $< -o $@
 	@echo "CC  <=  $<"
 
-enclave.so: enclave/enclave_t.o $(Enclave_C_Objects) $(Shared_Lib_Objects)
-	@$(CC) enclave/enclave_t.o $(Enclave_C_Objects) $(Shared_Lib_Objects) -o $@ $(Enclave_Link_Flags)
+enclave.so: enclave/enclave_t.o $(Enclave_C_Objects)
+	@$(CC) enclave/enclave_t.o $(Enclave_C_Objects) -o $@ $(Enclave_Link_Flags)
 	@echo "LINK =>  $@"
 
 $(Enclave_Name): enclave.so
@@ -236,4 +196,4 @@ $(Enclave_Name): enclave.so
 .PHONY: clean
 
 clean:
-	@rm -rf $(App_W_SGX) $(App_Wo_SGX) *.so *.a app/*.o enclave/*.o enclave/*_t.* enclave/*_u.* shared_lib/*.o app_lib/*.o
+	@rm -rf $(App) *.so *.a app/*.o enclave/*.o enclave/*_t.* enclave/*_u.*

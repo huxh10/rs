@@ -6,6 +6,7 @@
 #define IO_STREAM stdout
 
 #define BGP_UPDATE_FILE "conf/bgp_update.conf"
+#define AS_TOPO_FILE    "conf/as.conf"
 
 #define GLOBAL_ACCESS   0
 #define MSG_QUEUE       1
@@ -21,8 +22,8 @@
 typedef struct {
     uint32_t asn;
     uint32_t total_num;
-    uint32_t *import_policy;
-    uint32_t *export_policy;
+    uint8_t *import_policy;
+    uint8_t *export_policy;
 } as_conf_t;
 
 #endif

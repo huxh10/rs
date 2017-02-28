@@ -23,7 +23,7 @@ sgx_enclave_id_t load_enclave()
 
     ret = sgx_create_enclave(enclave_path, SGX_DEBUG_FLAG, &launch_token, &launch_token_updated, &enclave_id, NULL);
     if (ret != SGX_SUCCESS) {
-        fprintf(IO_STREAM, "sgx_create_enclave failed [%s]\n", __FUNCTION__);
+        fprintf(IO_STREAM, "sgx_create_enclave failed, errno:%d [%s]\n", ret, __FUNCTION__);
         exit(-1);
     } else {
         fprintf(IO_STREAM, "enclave - id %lu [%s]\n", enclave_id, __FUNCTION__);
@@ -36,7 +36,7 @@ void init_rs_w_sgx(uint32_t num, as_conf_t *p_as_conf)
     uint32_t ret_status, call_status, i;
     g_enclave_id = load_enclave();
     for (i = 0; i < num; i++) {
-        call_status = enclave_ecall_load_as_conf(g_enclave_id, &ret_status, i, (void *) p_as_conf[i].import_policy, num * sizeof(uint32_t), (void *) p_as_conf[i].export_policy, num * num * sizeof(uint32_t));
+        call_status = enclave_ecall_load_as_conf(g_enclave_id, &ret_status, i, (void *) p_as_conf[i].import_policy, num * sizeof *p_as_conf[i].import_policy, (void *) p_as_conf[i].export_policy, num * num * sizeof *p_as_conf[i].export_policy);
         if (ret_status == SUCCESS) {
             //fprintf(IO_STREAM, "enclave_load_as_conf asn:%u succeeded [%s]\n", i, __FUNCTION__);
         } else {
@@ -46,13 +46,28 @@ void init_rs_w_sgx(uint32_t num, as_conf_t *p_as_conf)
     }
 }
 
-void run_rs_w_sgx(int msg_num, bgp_msg_t **pp_bgp_msgs, int method, int verbose)
+void run_rs_w_sgx(int total_msg_num, int preloaded_msg_num, bgp_msg_t **pp_bgp_msgs, int method, int verbose)
 {
     int i = 0;
     uint32_t call_status, ret_status;
     uint64_t time_start, time_end;
 
-    for (i = 0; i < msg_num; i++) {
+    for (i = 0; i < preloaded_msg_num; i++) {
+        if (method == GLOBAL_ACCESS) {
+            call_status = enclave_ecall_compute_route_by_global_access(g_enclave_id, &ret_status, (void *) pp_bgp_msgs[i], pp_bgp_msgs[i]->msg_size);
+        } else if (method == MSG_QUEUE) {
+            call_status = enclave_ecall_compute_route_by_msg_queue(g_enclave_id, &ret_status, (void *) pp_bgp_msgs[i], pp_bgp_msgs[i]->msg_size);
+        }
+    }
+    if (preloaded_msg_num > 0) {
+        if (method == GLOBAL_ACCESS) {
+            call_status = enclave_ecall_get_rs_simplified_ribs_num(g_enclave_id, &ret_status);
+        } else if (method == MSG_QUEUE) {
+            call_status = enclave_ecall_get_rs_ribs_num(g_enclave_id, &ret_status);
+        }
+    }
+
+    for (i = preloaded_msg_num; i < total_msg_num; i++) {
         if (method == GLOBAL_ACCESS) {
             time_start = get_us_time();
             call_status = enclave_ecall_compute_route_by_global_access(g_enclave_id, &ret_status, (void *) pp_bgp_msgs[i], pp_bgp_msgs[i]->msg_size);
@@ -62,8 +77,9 @@ void run_rs_w_sgx(int msg_num, bgp_msg_t **pp_bgp_msgs, int method, int verbose)
             call_status = enclave_ecall_compute_route_by_msg_queue(g_enclave_id, &ret_status, (void *) pp_bgp_msgs[i], pp_bgp_msgs[i]->msg_size);
             time_end = get_us_time();
         }
+        i -= preloaded_msg_num;
         if (verbose == 0) {
-            if (i == 0 || i == 1 || i == 50 || i == 51 || i == 100 || i == 101 || i == 150 || i == 151 || i == 200 || i == 201) {
+            if (i == 0 || i == 1 || i == 50 || i == 51 || i == 100 || i == 101 || i == 150 || i == 151 || i == 200 || i == 201 || i == 250 || i == 251 || i == 300 || i == 301 || i == 350 || i == 351 || i == 400 || i == 401) {
                 printf("msg_id:%u time to compute: %lu\n", i, time_end - time_start);
             }
         } else if (verbose == 1) {
@@ -80,6 +96,7 @@ void run_rs_w_sgx(int msg_num, bgp_msg_t **pp_bgp_msgs, int method, int verbose)
                 call_status = enclave_ecall_print_rs_ribs(g_enclave_id, &ret_status);
             }
         }
+        i += preloaded_msg_num;
     }
 }
 

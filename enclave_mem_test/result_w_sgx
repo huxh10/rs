@@ -1,0 +1,121 @@
+
+
+mem_size 1 MB
+w/o sgx: allocate 1048576 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.004345 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 1048576 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.004335 us
+
+mem_size 2 MB
+w/o sgx: allocate 2097152 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.004380 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 2097152 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.004477 us
+
+mem_size 4 MB
+w/o sgx: allocate 4194304 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.004284 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 4194304 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.004476 us
+
+mem_size 6 MB
+w/o sgx: allocate 6291456 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.004480 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 6291456 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.009028 us
+
+mem_size 8 MB
+w/o sgx: allocate 8388608 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.008816 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 8388608 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.019445 us
+
+mem_size 10 MB
+w/o sgx: allocate 10485760 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.013424 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 10485760 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.030512 us
+
+mem_size 16 MB
+w/o sgx: allocate 16777216 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.017323 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 16777216 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.040075 us
+
+mem_size 24 MB
+w/o sgx: allocate 25165824 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.017809 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 25165824 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.044910 us
+
+mem_size 32 MB
+w/o sgx: allocate 33554432 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018175 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 33554432 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.047237 us
+
+mem_size 48 MB
+w/o sgx: allocate 50331648 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018182 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 50331648 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.049216 us
+
+mem_size 64 MB
+w/o sgx: allocate 67108864 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018152 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 67108864 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.050643 us
+
+mem_size 72 MB
+w/o sgx: allocate 75497472 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018346 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 75497472 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.050739 us
+
+mem_size 80 MB
+w/o sgx: allocate 83886080 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018441 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 83886080 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.051362 us
+
+mem_size 84 MB
+w/o sgx: allocate 88080384 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018505 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 88080384 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.051226 us
+
+mem_size 88 MB
+w/o sgx: allocate 92274688 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018568 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 92274688 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.397167 us
+
+mem_size 92 MB
+w/o sgx: allocate 96468992 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018613 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 96468992 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.860831 us
+
+mem_size 96 MB
+w/o sgx: allocate 100663296 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018664 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 100663296 B memory, pre_access 1 times, access 1000000000 times, time for each access 1.337128 us
+
+mem_size 104 MB
+w/o sgx: allocate 109051904 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018713 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 109051904 B memory, pre_access 1 times, access 1000000000 times, time for each access 2.083708 us
+
+mem_size 112 MB
+w/o sgx: allocate 117440512 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018796 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 117440512 B memory, pre_access 1 times, access 1000000000 times, time for each access 2.692264 us
+
+mem_size 120 MB
+w/o sgx: allocate 125829120 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018800 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 125829120 B memory, pre_access 1 times, access 1000000000 times, time for each access 3.284028 us
+
+mem_size 128 MB
+w/o sgx: allocate 134217728 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.018817 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 134217728 B memory, pre_access 1 times, access 1000000000 times, time for each access 3.640648 us
+
+mem_size 256 MB
+w/o sgx: allocate 268435456 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.019033 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 268435456 B memory, pre_access 1 times, access 1000000000 times, time for each access 7.310278 us
+
+mem_size 512 MB
+w/o sgx: allocate 536870912 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.019205 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 536870912 B memory, pre_access 1 times, access 1000000000 times, time for each access 9.186753 us
+
+mem_size 1024 MB
+w/o sgx: allocate 1073741824 B memory, pre_access 1 times, access 1000000000 times, time for each access 0.019172 us
+enclave - id 2 [load_enclave]
+w/ sgx:  allocate 1073741824 B memory, pre_access 1 times, access 1000000000 times, time for each access 9.832527 us

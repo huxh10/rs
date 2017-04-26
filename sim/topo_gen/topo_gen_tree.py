@@ -21,13 +21,16 @@ class TopoGenerator(object):
                 relationship = randint(0, self.rand_range)
                 if relationship == 2 or relationship == 3:
                     self.edge_num += 1
-                    self.lines_topo.append('%d %d %d\n' % (i, j, relationship))
-                    self.as_relationships[i][relationship].append(j)
-                    self.as_relationships[j][4-relationship].append(i)
+                    #self.lines_topo.append('%d %d %d\n' % (i, j, relationship))
+                    #self.as_relationships[i][relationship].append(j)
+                    #self.as_relationships[j][4-relationship].append(i)
+                    self.lines_topo.append('%d %d %d\n' % (i, j, 2))
+                    self.as_relationships[i][2].append(j)
+                    self.as_relationships[j][2].append(i)
 
     def write_to_file(self):
-        fn_topo = './conf/topo_tree_%d.conf' % self.as_num
-        fn_as = './conf/as_tree_%d.conf' % self.as_num
+        fn_topo = './conf/topo_peer_%d.conf' % self.as_num
+        fn_as = './conf/as_peer_%d.conf' % self.as_num
         fp_topo = open(fn_topo, 'w+')
         fp_as = open(fn_as, 'w+')
         self.lines_topo = ['%d %d\n' % (self.as_num, self.edge_num)] + self.lines_topo

@@ -9,6 +9,8 @@ uint32_t get_rs_ribs_num(rib_map_t **pp_ribs, uint32_t num);
 
 uint32_t get_rs_simplified_ribs_num(simplified_rib_map_t **pp_ribs, uint32_t num);
 
+uint32_t print_rs_best_ribs(rib_map_t **pp_ribs, uint32_t num);
+
 uint32_t print_rs_ribs(rib_map_t **pp_ribs, uint32_t num);
 
 uint32_t print_rs_simplified_ribs(simplified_rib_map_t **pp_ribs, uint32_t num);

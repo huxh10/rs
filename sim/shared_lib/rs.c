@@ -23,10 +23,12 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
     int sent_msg_num = 0;
 
     // TODO change pointer to uuid
+    int potential_changes[num];
     route_node_t *p_orig_best_rn[num];
     route_node_t *p_old_best_rn[num];
     route_node_t *p_new_best_rn[num];
     for (i = 0; i < num; i++) {
+        potential_changes[i] = 0;
         p_orig_best_rn[i] = NULL;
         p_old_best_rn[i] = NULL;
         p_new_best_rn[i] = NULL;
@@ -73,6 +75,7 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
         // process msgs to each as
         for (i = 0; i < num; i++) {
             if (pp_inner_msgs[i] == NULL) continue;
+            potential_changes[i] = 1;
             p_old_best_rn[i] = get_selected_route_node(p_curr_rns[i]);
             while (pp_inner_msgs[i]) {
                 // FIFO process
@@ -136,24 +139,25 @@ uint32_t compute_route_by_msg_queue(void *msg, size_t msg_size, as_conf_t *p_pol
 
     SAFE_FREE(pp_inner_msgs);
 
-    // update the sender rib
-    p_new_best_rn[orig_sender_asn] = get_selected_route_node(p_curr_rns[orig_sender_asn]);
-    if (p_orig_best_rn[orig_sender_asn] != p_new_best_rn[orig_sender_asn]) {
-        if (p_new_best_rn[orig_sender_asn]) {
-            HASH_FIND_STR(pp_ribs[orig_sender_asn], key, p_rib_entry);
+    // update rib routes
+    for (i = 0; i < num; i++) {
+        if (!potential_changes[i]) continue;
+        HASH_FIND_STR(pp_ribs[i], key, p_rib_entry);
+        if (p_curr_rns[i]) {
             if (p_rib_entry) {
-                p_rib_entry->routes = p_curr_rns[orig_sender_asn];
+                p_rib_entry->routes = p_curr_rns[i];
             } else {
                 p_rib_entry = malloc(sizeof *p_rib_entry);
                 p_rib_entry->key = my_strdup(key);
-                p_rib_entry->routes = p_curr_rns[orig_sender_asn];
-                HASH_ADD_KEYPTR(hh, pp_ribs[orig_sender_asn], p_rib_entry->key, strlen(key), p_rib_entry);
+                p_rib_entry->routes = p_curr_rns[i];
+                HASH_ADD_KEYPTR(hh, pp_ribs[i], p_rib_entry->key, strlen(key), p_rib_entry);
             }
         } else {
-            HASH_FIND_STR(pp_ribs[orig_sender_asn], key, p_rib_entry);
-            HASH_DEL(pp_ribs[orig_sender_asn], p_rib_entry);
-            SAFE_FREE(p_rib_entry->key);
-            SAFE_FREE(p_rib_entry);
+            if (p_rib_entry) {
+                HASH_DEL(pp_ribs[i], p_rib_entry);
+                SAFE_FREE(p_rib_entry->key);
+                SAFE_FREE(p_rib_entry);
+            }
         }
     }
 
@@ -411,7 +415,7 @@ uint32_t get_rs_ribs_num(rib_map_t **pp_ribs, uint32_t num)
 
 }
 
-uint32_t print_rs_ribs(rib_map_t **pp_ribs, uint32_t num)
+uint32_t print_rs_best_ribs(rib_map_t **pp_ribs, uint32_t num)
 {
     uint32_t i;
     rib_map_t *p_rib_entry = NULL, *tmp_p_rib_entry = NULL;
@@ -424,6 +428,30 @@ uint32_t print_rs_ribs(rib_map_t **pp_ribs, uint32_t num)
             if (p_best_rn) {
                 printf("next_hop: %d, route: ", p_best_rn->next_hop);
                 print_route(p_best_rn->route);
+            }
+        }
+    }
+    return SUCCESS;
+}
+
+uint32_t print_rs_ribs(rib_map_t **pp_ribs, uint32_t num)
+{
+    uint32_t i;
+    rib_map_t *p_rib_entry = NULL, *tmp_p_rib_entry = NULL;
+    route_node_t *p_tmp_rn = NULL;
+
+    for (i = 0; i < num; i++) {
+        printf("asn: %d:\n", i);
+        HASH_ITER(hh, pp_ribs[i], p_rib_entry, tmp_p_rib_entry) {
+            p_tmp_rn = p_rib_entry->routes;
+            while (p_tmp_rn) {
+                if (p_tmp_rn->is_selected) {
+                    printf("[*] next_hop: %d, route: ", p_tmp_rn->next_hop);
+                } else {
+                    printf("    next_hop: %d, route: ", p_tmp_rn->next_hop);
+                }
+                print_route(p_tmp_rn->route);
+                p_tmp_rn = p_tmp_rn->next;
             }
         }
     }

@@ -8,7 +8,7 @@ import random
 class TraceGenerator(object):
     def __init__(self, as_num):
         self.as_num = as_num
-        self.entry_num = 10
+        self.entry_num = 1000
         self.test_num = 250
         self.rand_range = 2 ** 32 - 1
         self.base_entry1 = ',46.20.255.29-3,37.49.237.83,0(IGP),'
@@ -33,7 +33,7 @@ class TraceGenerator(object):
             self.lines_trace.append(entry)
 
     def write_to_file(self):
-        fn_trace = './conf/trace_%d.conf' % self.as_num
+        fn_trace = './conf/trace_large_%d.conf' % self.as_num
         fp_trace = open(fn_trace, 'w+')
         fp_trace.writelines(self.lines_trace)
         fp_trace.close()

@@ -1,5 +1,6 @@
 #! /bin/bash
 
+#as_nums=( 20 40 60 80 100 200 300 400 500 600 700 800 900 1000 )
 as_nums=( 500 600 700 800 900 1000 )
 
 FILE=result_w_sgx
@@ -15,6 +16,6 @@ do
     do
         echo >> $FILE 2>&1
         echo round $j >> $FILE 2>&1
-        ./$PROGRAM -a conf/as_tree_$as_num.conf -t conf/trace_$as_num.conf >> $FILE 2>&1
+        ./$PROGRAM -a conf/as_peer_$as_num.conf -t conf/trace_large_$as_num.conf >> $FILE 2>&1
     done
 done
